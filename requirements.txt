@@ -1,5 +1,31 @@
+# Core web
 fastapi==0.111.0
 uvicorn[standard]==0.30.0
-pandas==2.2.2
 python-multipart==0.0.9
 python-dotenv
+
+# Data processing
+pandas==2.2.2
+numpy
+scikit-learn
+imbalanced-learn
+nltk
+tldextract
+geopy
+
+# Visualization
+matplotlib
+seaborn
+plotly
+wordcloud
+Pillow  # (PIL is now Pillow)
+
+# Web scraping
+beautifulsoup4
+requests
+
+# Streamlit frontend
+streamlit
+
+# Together API client
+together
