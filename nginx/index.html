@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My App Hub</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    /* Top Navigation Bar */
+    .navbar {
+      overflow: hidden;
+      background-color: #2b6cb0;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 10px 0;
+      z-index: 1000;
+    }
+    .navbar a {
+      color: white;
+      text-align: center;
+      padding: 14px 20px;
+      text-decoration: none;
+      font-size: 16px;
+      border-radius: 6px;
+      margin: 0 8px;
+    }
+    .navbar a:hover {
+      background-color: #1a4a7a;
+    }
+    /* Main Content */
+    .content {
+      padding: 80px 20px; /* add top padding so content is not hidden behind navbar */
+      text-align: center;
+    }
+    h1 {
+      color: #2b6cb0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <div class="navbar">
+    <a href="/streamlit/">Streamlit</a>
+    <a href="/fastapi/docs">FastAPI</a>
+    <a href="/n8n/">n8n</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h1>Welcome to My Project 🚀</h1>
+    <p>Select an app from the navigation bar above.</p>
+  </div>
+</body>
+</html>

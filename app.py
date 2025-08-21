@@ -33,7 +33,7 @@ from io import StringIO, BytesIO
 
 load_dotenv()
 
-app = FastAPI(title="CSV Merge API")
+app = FastAPI(title="CSV Merge API", root_path="/fastapi")
 
 @app.post("/merge")
 async def merge_csv(

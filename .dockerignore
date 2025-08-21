@@ -1,0 +1,43 @@
+# Virtual environment
+myenv/
+venv/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE/project settings
+.vscode/
+.idea/
+
+# Docker leftovers
+*.pid
+*.seed
+*.bak
+
+# Environment & config
+.env
+*.ini
+
+# Data files (ignore big local files, keep only sample if needed)
+*.csv
+*.xls
+*.xlsx
+
+# Streamlit & FastAPI artifacts
+.streamlit/
+
+# Git itself
+.git
+.gitignore
