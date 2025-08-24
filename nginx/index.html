@@ -44,11 +44,17 @@
 </head>
 <body>
   <!-- Top Navigation -->
- <div class="navbar">
-  <a href="http://localhost:8501/" target="_blank">Streamlit</a>
-  <a href="http://localhost:8000/docs" target="_blank">FastAPI</a>
-  <a href="http://localhost:5678/" target="_blank">n8n</a>
-</div>
+<script>
+  const BASE_URL = "{{PUBLIC_BASE_URL}}"; // to be replaced at build time
+  document.write(`
+    <div class="navbar">
+      <a href="${BASE_URL}:8501/" target="_blank">Streamlit</a>
+      <a href="${BASE_URL}:8000/docs" target="_blank">FastAPI</a>
+      <a href="${BASE_URL}:5678/" target="_blank">n8n</a>
+    </div>
+  `);
+</script>
+
 
   <!-- Main Content -->
   <div class="content">

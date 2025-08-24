@@ -70,7 +70,7 @@ async def merge_csv(
         out,
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="merged.csv"'}
-    )s
+    )
 
 last_inference_result = None
 last_cleaning_result = None
