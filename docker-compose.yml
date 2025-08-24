@@ -5,8 +5,6 @@ services:
       dockerfile: fastapi.Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - "C:/Users/sriva/Downloads/Multimedia Data:/data"
     env_file:
       - .env
 
