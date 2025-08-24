@@ -33,6 +33,6 @@ services:
   homepage:
     image: nginx:alpine
     volumes:
-      - ./nginx/index.html:/usr/share/nginx/html/index.html
+      - ./nginx:/usr/share/nginx/html
     ports:
       - "8090:80"
