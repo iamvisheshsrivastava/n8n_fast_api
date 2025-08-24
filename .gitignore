@@ -29,6 +29,7 @@ Thumbs.db
 # Environment & config
 .env
 *.ini
+index.local.html
 
 # Data files (keep only small test data if needed)
 *.csv
