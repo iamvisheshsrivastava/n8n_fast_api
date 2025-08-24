@@ -37,29 +37,30 @@ app = FastAPI(title="CSV Merge API", root_path="/fastapi")
 
 @app.post("/merge")
 async def merge_csv(
-    file1_path: str = Form(...),
-    file2_path: str = Form(...),
-    on: str = Form(...),            
-    how: str = Form("inner")       
+    file1: UploadFile,
+    file2: UploadFile,
+    on: str = Form(...),
+    how: str = Form("inner")
 ):
     how = how.lower().strip()
     if how not in {"inner", "left", "right", "outer"}:
-        raise HTTPException(400, f"Invalid join type: {how}")
+        raise HTTPException(status_code=400, detail=f"Invalid join type: {how}")
 
     join_cols = [c.strip() for c in on.split(",") if c.strip()]
     if not join_cols:
-        raise HTTPException(400, "Provide at least one join column via 'on'")
+        raise HTTPException(status_code=400, detail="Provide at least one join column via 'on'")
 
     try:
-        df1 = pd.read_csv(file1_path)
-        df2 = pd.read_csv(file2_path)
+        # Read uploaded files into DataFrames
+        df1 = pd.read_csv(file1.file)
+        df2 = pd.read_csv(file2.file)
     except Exception as e:
-        raise HTTPException(400, f"Error reading CSVs: {e}")
+        raise HTTPException(status_code=400, detail=f"Error reading CSVs: {e}")
 
     try:
         df_merged = df1.merge(df2, on=join_cols, how=how, suffixes=("", "_2"))
     except Exception as e:
-        raise HTTPException(400, f"Merge failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Merge failed: {e}")
 
     out = BytesIO()
     df_merged.to_csv(out, index=False)
@@ -69,8 +70,7 @@ async def merge_csv(
         out,
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="merged.csv"'}
-    )
-
+    )s
 
 last_inference_result = None
 last_cleaning_result = None

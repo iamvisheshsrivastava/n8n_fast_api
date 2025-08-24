@@ -294,3 +294,5 @@ elif page == "Manual Cleaning":
             )
         else:
             st.error(f"❌ API Error: {response.text}")
+
+
