@@ -5,6 +5,8 @@ services:
       dockerfile: fastapi.Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - "C:/Users/sriva/Downloads/Multimedia Data:/data"
     env_file:
       - .env
 
@@ -34,5 +36,12 @@ services:
     image: nginx:alpine
     volumes:
       - ./nginx:/usr/share/nginx/html
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:
       - "8090:80"
+    environment:
+      - INDEX_FILE=index.local.html   # 👈 local default
+    depends_on:
+      - fastapi
+      - streamlit
+      - n8n

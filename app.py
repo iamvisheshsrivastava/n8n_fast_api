@@ -37,30 +37,29 @@ app = FastAPI(title="CSV Merge API", root_path="/fastapi")
 
 @app.post("/merge")
 async def merge_csv(
-    file1: UploadFile,
-    file2: UploadFile,
-    on: str = Form(...),
-    how: str = Form("inner")
+    file1_path: str = Form(...),
+    file2_path: str = Form(...),
+    on: str = Form(...),            
+    how: str = Form("inner")       
 ):
     how = how.lower().strip()
     if how not in {"inner", "left", "right", "outer"}:
-        raise HTTPException(status_code=400, detail=f"Invalid join type: {how}")
+        raise HTTPException(400, f"Invalid join type: {how}")
 
     join_cols = [c.strip() for c in on.split(",") if c.strip()]
     if not join_cols:
-        raise HTTPException(status_code=400, detail="Provide at least one join column via 'on'")
+        raise HTTPException(400, "Provide at least one join column via 'on'")
 
     try:
-        # Read uploaded files into DataFrames
-        df1 = pd.read_csv(file1.file)
-        df2 = pd.read_csv(file2.file)
+        df1 = pd.read_csv(file1_path)
+        df2 = pd.read_csv(file2_path)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error reading CSVs: {e}")
+        raise HTTPException(400, f"Error reading CSVs: {e}")
 
     try:
         df_merged = df1.merge(df2, on=join_cols, how=how, suffixes=("", "_2"))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Merge failed: {e}")
+        raise HTTPException(400, f"Merge failed: {e}")
 
     out = BytesIO()
     df_merged.to_csv(out, index=False)
@@ -71,6 +70,43 @@ async def merge_csv(
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="merged.csv"'}
     )
+
+@app.post("/mergefileupload")
+async def mergefileupload(
+    file1: UploadFile,
+    file2: UploadFile,
+    on: str = Form(...),            
+    how: str = Form("inner")       
+):
+    how = how.lower().strip()
+    if how not in {"inner", "left", "right", "outer"}:
+        raise HTTPException(400, f"Invalid join type: {how}")
+
+    join_cols = [c.strip() for c in on.split(",") if c.strip()]
+    if not join_cols:
+        raise HTTPException(400, "Provide at least one join column via 'on'")
+
+    try:
+        df1 = pd.read_csv(file1.file)
+        df2 = pd.read_csv(file2.file)
+    except Exception as e:
+        raise HTTPException(400, f"Error reading CSVs: {e}")
+
+    try:
+        df_merged = df1.merge(df2, on=join_cols, how=how, suffixes=("", "_2"))
+    except Exception as e:
+        raise HTTPException(400, f"Merge failed: {e}")
+
+    out = BytesIO()
+    df_merged.to_csv(out, index=False)
+    out.seek(0)
+
+    return StreamingResponse(
+        out,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="merged.csv"'}
+    )
+
 
 last_inference_result = None
 last_cleaning_result = None
@@ -489,7 +525,6 @@ def manual_cleaning_fn_from_form(df: pd.DataFrame, params: dict) -> Tuple[pd.Dat
     cleaned = df.copy()
     logs: List[dict] = []
 
-    # helpers
     def get_val(key, default=None):
         return params.get(key, default)
 
@@ -504,7 +539,6 @@ def manual_cleaning_fn_from_form(df: pd.DataFrame, params: dict) -> Tuple[pd.Dat
             except Exception:
                 return default
 
-    # steps selected
     steps = params.get("Select Preprocessing Step(s)", [])
     if not isinstance(steps, list):
         steps = [steps]
