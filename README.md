@@ -45,7 +45,7 @@ N8N_FAST_API/
 
 * **FastAPI (`app.py`)** — business logic (merge, inference, LLM cleaning, manual cleaning) and cached `last_*` endpoints.
 * **Streamlit (`ui.py`)** — 4 tabs: Column Inference, LLM Cleaning, Visualization, Manual Cleaning. Connects to the FastAPI service (defaults to `BASE_URL=http://127.0.0.1:8000`).
-* **n8n** — optional workflow engine for forms and automation (import `workflow.json`).
+* **n8n** — optional workflow engine for forms and automation (import any workflow from 'workflows' folder).
 * **NGINX** — reverse proxy and a static App Hub (see `nginx/index.production.html`).
 
 ---
