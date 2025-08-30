@@ -1,0 +1,451 @@
+{
+  "name": "WorkflowFileUpload",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "csv-merge-by-path",
+        "formTitle": "CSV Merge (using server file paths)",
+        "formDescription": "Enter two CSV file paths (reachable by the FastAPI server), join columns, and join type.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "file1_path",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "file2_path",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "join_cols",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "join_type",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "inner"
+                  },
+                  {
+                    "option": "left"
+                  },
+                  {
+                    "option": "right"
+                  },
+                  {
+                    "option": "outer"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "4bdae6f8-f80e-414d-9ece-85ae1883625f",
+      "name": "Fill path and join details",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        256
+      ],
+      "webhookId": "c8d0dc09-de8e-4c85-9d91-503db21ce01d"
+    },
+    {
+      "parameters": {
+        "content": "Node 0 (Merge CSV) → You can connect it to:\n- Node 2 (Download merged CSV)\n- Node 3 (Infer column types)",
+        "height": 128
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        128
+      ],
+      "id": "136c0786-b1a5-4898-b3c6-f16d0c1d5fde",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a0007bc4-e8af-49f7-8693-8f1043c45584",
+      "name": "1a) VIEW CSV",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/inference",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "csv_text",
+              "value": "={{ $json.data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        320
+      ],
+      "id": "9add2c65-2962-4f61-a052-0d221b583013",
+      "name": "1b) Inference Column Types"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/LLMCleaning",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "csv_text",
+              "value": "={{$json[\"data\"]}}"
+            },
+            {
+              "name": "instruction",
+              "value": "={{ $json.Instruction }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        592
+      ],
+      "id": "ec2f9e90-4018-4420-a622-19e92b7fd39b",
+      "name": "1c) LLM Cleaning"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get columns object from inference output\nconst cols = $json[\"columns\"];\n\n// Convert it into an array of {column, type}, plus add a link field\nconst results = Object.entries(cols).map(([name, dtype]) => {\n  return {\n    column: name,\n    inferred_type: dtype,\n    ui_link: \"http://localhost:8501/\"\n  };\n});\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        320
+      ],
+      "id": "26232d92-3a59-4c4d-9bb9-1bfb1154fd43",
+      "name": "2a) View Column Types"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field with the Streamlit URL\nfor (const item of $input.all()) {\n  item.json.ui_link = \"http://localhost:8501/\";\n}\n\nreturn $input.all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        576
+      ],
+      "id": "34ee216e-2590-48d6-960d-a50ba7a1c3fc",
+      "name": "2b) Cleaned Columns Visualization"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csvText = $json[\"data\"];  \nconst rows = csvText.trim().split(\"\\n\");\nconst headers = rows[0].split(\",\");\n\nconst results = rows.slice(1).map(r => {\n  const values = r.split(\",\");\n  let obj = {}; \n\n  headers.forEach((h, i) => {\n    obj[h.trim()] = values[i] ? values[i].trim() : null;\n  });\n\n  obj[\"ui_link\"] = \"http://localhost:8501/\";\n  return obj;\n});\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        896
+      ],
+      "id": "f75d147c-8c30-4adb-88af-a060f825b5c2",
+      "name": "2c) View Cleaned DataFrame"
+    },
+    {
+      "parameters": {
+        "content": "Node 1b (Inference Column Types) → You can connect it to:\n- Node 2a (View Column Types)\n- Node 2b (Cleaned Column Visualization)",
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        272
+      ],
+      "id": "bdec7a2b-dae3-4a89-b67a-61b3ace8cd48",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Node 1c (LLM Cleaning) → You can connect it to:\n- Node 2b (Cleaned Columns Visualization)\n- Node 2c (View Cleaned DataFrame)",
+        "height": 144,
+        "width": 214
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        560
+      ],
+      "id": "b8057d59-7401-4488-a431-24cf4f813c75",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Node 1d (Manual Cleaning) → You can connect it to:\n- Node 2c (View Cleaned DataFrame)",
+        "height": 96,
+        "width": 214
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        864
+      ],
+      "id": "79cd50c6-5ad8-4cd1-90fe-6571268cb757",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/mergefileupload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file1",
+              "inputDataFieldName": "=file1_path"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file2",
+              "inputDataFieldName": "=file2_path"
+            },
+            {
+              "name": "on",
+              "value": "={{ $json.join_cols }}"
+            },
+            {
+              "name": "how",
+              "value": "={{ $json.join_type }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ab99ea9f-d2a5-427b-8fc0-f7470fec473b",
+      "name": "0) Merge CSV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -464,
+        256
+      ],
+      "notesInFlow": true,
+      "notes": "You can connect this to Node 2 (download) or Node 3 (inference)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/manual_cleaning",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  data: $node[\"0) Merge CSV\"].json.data,\n  params: {\n    \"Select Preprocessing Step(s)\": $node[\"Form1\"].json[\"Select Preprocessing Step(s)\"],\n    \"Scale: min_value\": $node[\"Form1\"].json[\"Scale: min_value\"],\n    \"Scale: max_value\": $node[\"Form1\"].json[\"Scale: max_value\"],\n    \"Impute: strategy\": $node[\"Form1\"].json[\"Impute: strategy\"],\n    \"Impute: fill_value (used when strategy=constant)\": $node[\"Form1\"].json[\"Impute: fill_value (used when strategy=constant)\"],\n    \"Binarize: threshold\": $node[\"Form1\"].json[\"Binarize: threshold\"],\n    \"Remove Outliers: iqr_multiplier\": $node[\"Form1\"].json[\"Remove Outliers: iqr_multiplier\"],\n    \"NaN Threshold for Column Removal\": $node[\"Form1\"].json[\"NaN Threshold for Column Removal\"],\n    \"NaN Threshold for Row Removal\": $node[\"Form1\"].json[\"NaN Threshold for Row Removal\"],\n    \"SMOTE: target_column\": $node[\"Form1\"].json[\"SMOTE: target_column\"],\n    \"SMOTE: sampling_strategy\": $node[\"Form1\"].json[\"SMOTE: sampling_strategy\"],\n    \"SMOTE: k_neighbors\": $node[\"Form1\"].json[\"SMOTE: k_neighbors\"]\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        896
+      ],
+      "id": "355fe5b8-e3a8-4942-ae07-e577d0a42e86",
+      "name": "1d) Manual Cleaning"
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Instruction",
+              "requiredField": true
+            },
+            {
+              "fieldType": "hiddenField",
+              "fieldName": "data",
+              "fieldValue": "={{ $json.data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        576
+      ],
+      "id": "163be2ba-b565-467a-9824-ae9eb23ae6a8",
+      "name": "Form",
+      "webhookId": "646849da-a38a-4491-b2cf-5dd8f202906e",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "defineForm": "json",
+        "jsonOutput": "[\n  { \"fieldLabel\": \"Select Preprocessing Step(s)\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"Normalize\" },\n      { \"option\": \"Scale\" },\n      { \"option\": \"Impute Missing Values\" },\n      { \"option\": \"One-Hot Encoding\" },\n      { \"option\": \"Binarize\" },\n      { \"option\": \"Remove Outliers\" },\n      { \"option\": \"Remove Columns with Excessive NaNs\" },\n      { \"option\": \"Remove Rows with Excessive NaNs\" }\n    ]},\n    \"multiselect\": true,\n    \"requiredField\": true\n  },\n\n  { \"fieldLabel\": \"Scale: min_value\", \"fieldType\": \"number\", \"placeholder\": \"0\" },\n  { \"fieldLabel\": \"Scale: max_value\", \"fieldType\": \"number\", \"placeholder\": \"1\" },\n\n  { \"fieldLabel\": \"Impute: strategy\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"mean\" },\n      { \"option\": \"median\" },\n      { \"option\": \"most_frequent\" },\n      { \"option\": \"constant\" }\n    ]}\n  },\n  { \"fieldLabel\": \"Impute: fill_value (used when strategy=constant)\", \"fieldType\": \"number\", \"placeholder\": \"0\" },\n\n  { \"fieldLabel\": \"Binarize: threshold\", \"fieldType\": \"number\", \"placeholder\": \"0.0\" },\n\n  { \"fieldLabel\": \"Remove Outliers: iqr_multiplier\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"1.5\" },\n      { \"option\": \"3.0\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"NaN Threshold for Column Removal\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"0.1\" }, { \"option\": \"0.3\" }, { \"option\": \"0.5\" }, { \"option\": \"0.7\" }, { \"option\": \"0.9\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"NaN Threshold for Row Removal\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"0.1\" }, { \"option\": \"0.3\" }, { \"option\": \"0.5\" }, { \"option\": \"0.7\" }, { \"option\": \"0.9\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"Select Data Augmentation Step(s)\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"SMOTE\" },\n      { \"option\": \"Dataset Multiplier\" },\n      { \"option\": \"Add Noise\" },\n      { \"option\": \"Oversample\" },\n      { \"option\": \"Undersample\" }\n    ]},\n    \"multiselect\": true\n  },\n\n  { \"fieldLabel\": \"SMOTE: target_column\", \"fieldType\": \"text\", \"placeholder\": \"e.g. label\" },\n  { \"fieldLabel\": \"SMOTE: sampling_strategy\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"auto\" },\n      { \"option\": \"minority\" },\n      { \"option\": \"not majority\" },\n      { \"option\": \"not minority\" },\n      { \"option\": \"all\" }\n    ]}\n  },\n  { \"fieldLabel\": \"SMOTE: k_neighbors\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"3\" }, { \"option\": \"5\" }, { \"option\": \"10\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"Dataset Multiplier: size_multiplier\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"1x\" }, { \"option\": \"2x\" }, { \"option\": \"3x\" }, { \"option\": \"4x\" }, { \"option\": \"5x\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"Add Noise: noise_factor\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"0.1\" }, { \"option\": \"0.2\" }, { \"option\": \"0.3\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"Oversample: target_column\", \"fieldType\": \"text\", \"placeholder\": \"e.g. label\" },\n  { \"fieldLabel\": \"Oversample: sampling_strategy\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"minority\" },\n      { \"option\": \"not majority\" },\n      { \"option\": \"all\" }\n    ]}\n  },\n\n  { \"fieldLabel\": \"Undersample: target_column\", \"fieldType\": \"text\", \"placeholder\": \"e.g. label\" },\n  { \"fieldLabel\": \"Undersample: sampling_strategy\", \"fieldType\": \"dropdown\",\n    \"fieldOptions\": { \"values\": [\n      { \"option\": \"majority\" },\n      { \"option\": \"not minority\" },\n      { \"option\": \"all\" }\n    ]}\n  }\n]\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        880
+      ],
+      "id": "71cfe917-396c-4842-b6dc-4aaf16abe3db",
+      "name": "Form1",
+      "webhookId": "646849da-a38a-4491-b2cf-5dd8f202906e",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Fill path and join details": {
+      "main": [
+        [
+          {
+            "node": "0) Merge CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1b) Inference Column Types": {
+      "main": [
+        [
+          {
+            "node": "2a) View Column Types",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "2b) Cleaned Columns Visualization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1c) LLM Cleaning": {
+      "main": [
+        [
+          {
+            "node": "2c) View Cleaned DataFrame",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "2b) Cleaned Columns Visualization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "0) Merge CSV": {
+      "main": [
+        [
+          {
+            "node": "1a) VIEW CSV",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "1b) Inference Column Types",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Form1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "1d) Manual Cleaning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1d) Manual Cleaning": {
+      "main": [
+        [
+          {
+            "node": "2c) View Cleaned DataFrame",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form": {
+      "main": [
+        [
+          {
+            "node": "1c) LLM Cleaning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form1": {
+      "main": [
+        [
+          {
+            "node": "1d) Manual Cleaning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0b478141-43ed-4961-8bba-2cb5d76ed267",
+  "meta": {
+    "instanceId": "36dbb889c8a615e1320819c42be3855791b35b736ff37720328c48c70a9a4634"
+  },
+  "id": "2N3th5u4TMa9aqwQ",
+  "tags": []
+}

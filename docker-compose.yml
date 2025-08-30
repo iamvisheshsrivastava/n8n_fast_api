@@ -5,7 +5,8 @@ services:
       dockerfile: fastapi.Dockerfile
     ports:
       - "8000:8000"
-
+    volumes:
+      - "C:/Users/sriva/Downloads/Multimedia Data:/data"
     env_file:
       - .env
 
@@ -39,7 +40,7 @@ services:
     ports:
       - "8090:80"
     environment:
-      - INDEX_FILE=index.local.html   # 👈 local default
+      - INDEX_FILE=index.local.html  
     depends_on:
       - fastapi
       - streamlit
