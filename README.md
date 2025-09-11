@@ -1,4 +1,4 @@
-# CSV Cleaning + Inference Stack (FastAPI · Streamlit · n8n · NGINX) — **Azure‑Hosted**
+# CSV Cleaning + Inference Stack (FastAPI · Streamlit · n8n · NGINX) — **Azure‑Hosted**  
 
 A small, containerized toolkit for CSV merging, column type inference, data cleaning (LLM‑powered + manual rules), and visualization. The stack exposes a **FastAPI** backend, a **Streamlit** frontend, an **n8n** automation workflow, and an **NGINX** landing page that links everything together.
 
