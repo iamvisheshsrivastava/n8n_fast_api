@@ -2,6 +2,7 @@
 
 A small, containerized toolkit for CSV merging, column type inference, data cleaning (LLM‑powered + manual rules), and visualization. The stack exposes a **FastAPI** backend, a **Streamlit** frontend, an **n8n** automation workflow, and an **NGINX** landing page that links everything together.
 
+
 > **Live deployment:** This project is currently hosted on a **Microsoft Azure** VM (Ubuntu 22.04) with Docker Compose and NGINX. The README includes Azure‑specific steps. (No AWS is used for hosting; any S3 mentions are optional roadmap items only.)
 
 ---
