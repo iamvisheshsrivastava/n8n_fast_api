@@ -1,21 +1,22 @@
-# CSV Cleaning + Inference Stack (FastAPI · Streamlit · n8n · NGINX) — **Azure‑Hosted**  
- 
-A small, containerized toolkit for CSV merging, column type inference, data cleaning (LLM‑powered + manual rules), and visualization. The stack exposes a **FastAPI** backend, a **Streamlit** frontend, an **n8n** automation workflow, and an **NGINX** landing page that links everything together.
+# Production-Ready CSV Processing & ML Inference Service (FastAPI · Docker · n8n)
 
+## Executive Summary
+End-to-end, containerized data processing and ML inference service built with FastAPI and Docker.
+Supports CSV merging, column type inference, deterministic and LLM-assisted cleaning, and workflow automation via n8n.
+Designed for local development and VM-based deployment with reverse proxying and clear API boundaries.
 
-> **Live deployment:** This project is currently hosted on a **Microsoft Azure** VM (Ubuntu 22.04) with Docker Compose and NGINX. The README includes Azure‑specific steps. (No AWS is used for hosting; any S3 mentions are optional roadmap items only.)
+## Deployment
+The stack has been deployed on a Linux VM using Docker Compose and NGINX.
+Cloud-specific steps (Azure VM) are documented below, but the setup is cloud-agnostic.
 
 ---
 
-## ✨ Features
-
-* **CSV Merge API:** join two CSVs by one or more keys via file upload or file path.
-* **Column Inference:** fast heuristics (pandas dtypes + low‑cardinality rules) to label columns.
-* **LLM Cleaning:** send natural‑language instructions; the API requests code from an LLM and executes it on the DataFrame (⚠️ powerful but dangerous, see *Security*).
-* **Manual Cleaning:** deterministic pipeline driven by form parameters (remove NaNs, impute, outlier removal, scaling, normalization, binarization, one‑hot encoding, etc.).
-* **Visualization Hub (Streamlit):** inspect inferred types, show charts per column, preview image/video/document URLs, summarize webpages with the LLM, and download cleaned datasets.
-* **n8n Workflow:** example automation (importable from `workflow.json`).
-* **NGINX Landing Page:** simple index page linking to Streamlit, FastAPI docs, and n8n.
+## Key Features
+- FastAPI backend for CSV merging, inference, and cleaning pipelines
+- Deterministic preprocessing and optional LLM-assisted transformations
+- n8n workflows for automation and integration
+- Streamlit UI for inspection and visualization
+- Fully containerized with Docker Compose and NGINX reverse proxy
 
 ---
 
@@ -50,6 +51,9 @@ N8N_FAST_API/
 * **NGINX** — reverse proxy and a static App Hub (see `nginx/index.production.html`).
 
 ---
+
+## API Overview
+The FastAPI service exposes clear, stateless endpoints designed for automation and integration into data workflows.
 
 ## 🧩 API Endpoints (FastAPI)
 
@@ -336,11 +340,9 @@ docker compose up -d --build
 
 ---
 
-## 🔐 Security Notes
-
-* **LLM code execution:** `/LLMCleaning` executes arbitrary Python returned by the model via `exec`. Only enable with trusted keys and users. Consider sandboxing, timeouts, resource limits, and whitelisting allowed modules. Log the returned code and keep audit trails.
-* **File paths:** For `/merge`, file paths should point to safe, mounted locations. Prefer `/mergefileupload` for user input.
-* **Auth:** Protect **n8n** (basic auth env vars) and consider JWT/API keys for FastAPI. Hide direct service ports behind NGINX where possible.
+## Security Notes
+This project intentionally demonstrates both deterministic and LLM-driven data transformations.
+LLM-based execution is powerful and must be sandboxed or restricted in production environments.
 
 ---
 
