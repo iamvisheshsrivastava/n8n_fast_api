@@ -1,0 +1,11 @@
+streamlit
+pandas==2.2.2
+requests
+python-dotenv
+Pillow
+beautifulsoup4
+wordcloud
+plotly
+seaborn
+matplotlib
+together

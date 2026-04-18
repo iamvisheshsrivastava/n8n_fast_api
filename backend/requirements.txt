@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.9
+python-dotenv
+pandas==2.2.2
+numpy
+scikit-learn
+imbalanced-learn
+nltk
+tldextract
+geopy
+together
+transformers

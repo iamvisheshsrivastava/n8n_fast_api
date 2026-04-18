@@ -24,19 +24,31 @@ Cloud-specific steps (Azure VM) are documented below, but the setup is cloud-agn
 
 ```
 N8N_FAST_API/
-├─ nginx/
-│  └─ index.production.html         # Landing page with links to Streamlit / FastAPI / n8n
+├─ backend/
+│  ├─ app/
+│  │  ├─ __init__.py
+│  │  └─ main.py                    # FastAPI backend (root_path="/fastapi")
+│  └─ requirements.txt              # Backend dependencies
+├─ frontend/
+│  ├─ streamlit_app.py              # Streamlit app (dashboard)
+│  └─ requirements.txt              # Frontend dependencies
+├─ docker/
+│  ├─ backend.Dockerfile            # Image for the FastAPI app
+│  └─ frontend.Dockerfile           # Image for the Streamlit UI
+├─ infra/
+│  └─ nginx/
+│     ├─ index.local.html
+│     ├─ index.production.html      # Landing page with links to Streamlit / FastAPI / n8n
+│     └─ nginx.conf.template        # NGINX config (env-templated)
+├─ workflows/
+│  ├─ workflow.json
+│  ├─ WorkflowFileUpload.json
+│  └─ Working_Flow.json
 ├─ .dockerignore
 ├─ .env.prod                        # Environment variables for docker-compose (create your own)
 ├─ .gitignore
-├─ app.py                           # FastAPI backend (root_path="/fastapi")
 ├─ docker-compose.yml               # Orchestrates FastAPI, Streamlit, n8n, and NGINX
-├─ fastapi.Dockerfile               # Image for the FastAPI app
-├─ nginx.conf.template              # NGINX config (env‑templated)
-├─ requirements.txt                 # Python dependencies for both services
-├─ streamlit.Dockerfile             # Image for the Streamlit UI (ui.py)
-├─ ui.py                            # Streamlit app (dashboard)
-└─ workflow.json                    # n8n workflow export (importable)
+└─ README.md
 ```
 
 **Note on paths:** FastAPI is created with `FastAPI(title="CSV Merge API", root_path="/fastapi")`. Routes are mounted at `/` (e.g., `/merge`, `/inference`), while OpenAPI is served under the `root_path` when behind a reverse proxy. Locally you can still use `http://localhost:8000/docs` while NGINX can expose `/fastapi/docs` externally.
@@ -45,10 +57,10 @@ N8N_FAST_API/
 
 ## 🧱 Architecture
 
-* **FastAPI (`app.py`)** — business logic (merge, inference, LLM cleaning, manual cleaning) and cached `last_*` endpoints.
-* **Streamlit (`ui.py`)** — 4 tabs: Column Inference, LLM Cleaning, Visualization, Manual Cleaning. Connects to the FastAPI service (defaults to `BASE_URL=http://127.0.0.1:8000`).
+* **FastAPI (`backend/app/main.py`)** — business logic (merge, inference, LLM cleaning, manual cleaning) and cached `last_*` endpoints.
+* **Streamlit (`frontend/streamlit_app.py`)** — 4 tabs: Column Inference, LLM Cleaning, Visualization, Manual Cleaning. Connects to the FastAPI service (defaults to `FASTAPI_BASE_URL=http://127.0.0.1:8000`).
 * **n8n** — optional workflow engine for forms and automation (import any workflow from 'workflows' folder).
-* **NGINX** — reverse proxy and a static App Hub (see `nginx/index.production.html`).
+* **NGINX** — reverse proxy and a static App Hub (see `infra/nginx/index.production.html`).
 
 ---
 
@@ -182,18 +194,18 @@ curl -X POST http://localhost:8000/manual_cleaning \
 
 ---
 
-## 🖥️ Streamlit App (`ui.py`)
+## 🖥️ Streamlit App (`frontend/streamlit_app.py`)
 
 Pages: Column Inference, LLM Cleaning, Visualization, Manual Cleaning.
 
-`BASE_URL` defaults to `http://127.0.0.1:8000`. If you run behind NGINX with a different host, set an env var (see `.env.prod`) or read from `PUBLIC_BASE_URL` and propagate it into `ui.py`.
+`FASTAPI_BASE_URL` defaults to `http://127.0.0.1:8000`. If you run behind NGINX with a different host, set this env var in `.env` or `.env.prod`.
 
 Visualizations include bar charts, box plots, word clouds, maps, heatmaps, and media previews. A URL summarizer is available via the LLM.
 
 Run locally (after installing requirements):
 
 ```bash
-streamlit run ui.py --server.port 8501 --server.address 0.0.0.0
+streamlit run frontend/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
 ```
 
 ---
@@ -304,7 +316,7 @@ cp .env.prod .env
 
 ### 5) (Optional) NGINX config
 
-This repo ships `nginx.conf.template` that maps `/fastapi/` → `fastapi:8000` and exposes a static landing page. Ensure these key blocks exist:
+This repo ships `infra/nginx/nginx.conf.template` that maps `/fastapi/` → `fastapi:8000` and exposes a static landing page. Ensure these key blocks exist:
 
 ```nginx
 location /fastapi/ {
@@ -348,24 +360,25 @@ LLM-based execution is powerful and must be sandboxed or restricted in productio
 
 ## 🧷 n8n Workflow
 
-Import `workflow.json` into n8n (**Menu → Import from file**). Connect it to the `/manual_cleaning` endpoint or any custom nodes you need.
+Import one of the files in `workflows/` into n8n (**Menu → Import from file**). Connect it to the `/manual_cleaning` endpoint or any custom nodes you need.
 
 ---
 
 ## 📦 Requirements (key libs)
 
-* fastapi, uvicorn
-* pandas, numpy, scikit‑learn, imbalanced‑learn
-* nltk, tldextract, geopy
-* requests, python‑dotenv, beautifulsoup4, pillow
-* wordcloud, plotly, seaborn, matplotlib
-* streamlit
-* together (Python SDK)
+* Backend: fastapi, uvicorn, pandas, numpy, scikit-learn, imbalanced-learn, nltk, tldextract, geopy, together
+* Frontend: streamlit, pandas, requests, python-dotenv, beautifulsoup4, pillow, wordcloud, plotly, seaborn, matplotlib, together
 
-Install all via:
+Install backend dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
+```
+
+Install frontend dependencies:
+
+```bash
+pip install -r frontend/requirements.txt
 ```
 
 ---
@@ -377,14 +390,15 @@ pip install -r requirements.txt
 * Add unit tests and CI.
 * Improve type inference rules & confidence scores.
 * Safer LLM exec with a restricted sandbox.
-* Make `BASE_URL` configurable via environment variable in `ui.py`.
+* Add endpoint tests for `backend/app/main.py`.
+* Add Streamlit UI smoke tests for `frontend/streamlit_app.py`.
 * Add NGINX locations to proxy Streamlit (`/ui`) and n8n (`/n8n`) through port 80/443 only.
 
 ---
 
 ## 🙋 Troubleshooting
 
-* **CORS / proxy issues:** Check `nginx.conf.template` and `FASTAPI_ROOT_PATH`. If Swagger UI can’t call the API behind a prefix, verify `root_path` matches the upstream location.
+* **CORS / proxy issues:** Check `infra/nginx/nginx.conf.template` and `FASTAPI_ROOT_PATH`. If Swagger UI cannot call the API behind a prefix, verify `root_path` matches the upstream location.
 * **NLTK missing resources:** Install/download `punkt` & `stopwords`.
 * **Large CSVs in forms:** For `/inference` and `/LLMCleaning`, you’re sending the whole CSV as a form field. Prefer upload endpoints for very large files.
 * **Model/API errors:** Ensure `TOGETHER_API_KEY` is set and the chosen model ID exists.

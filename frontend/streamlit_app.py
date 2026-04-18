@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 from io import StringIO
 from dotenv import load_dotenv
+import os
 from PIL import Image
 from bs4 import BeautifulSoup
 from wordcloud import WordCloud
@@ -22,7 +23,7 @@ def render_image_urls(urls):
             response = requests.get(url)
             img = Image.open(BytesIO(response.content))
             st.image(img, caption=url, use_column_width=True)
-        except:
+        except Exception:
             st.warning(f"Could not load image: {url}")
 
 def render_file_links(urls):
@@ -79,7 +80,6 @@ def call_llm(prompt: str, temperature=0.3, max_tokens=700) -> str:
     client = Together()
     response = client.chat.completions.create(
         model="moonshotai/Kimi-K2-Instruct",
-        #model="Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
         messages=[{"role": "user", "content": prompt}],
         temperature=temperature,
         max_tokens=max_tokens
@@ -203,7 +203,7 @@ st.title("📊 CSV Workflow Dashboard")
 
 page = st.sidebar.radio("Choose a view", ["Column Inference", "LLM Cleaning", "Visualization", "Manual Cleaning"])
 
-BASE_URL = "http://127.0.0.1:8000"  
+BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
 
 # ---------------- Column Inference ----------------
 if page == "Column Inference":

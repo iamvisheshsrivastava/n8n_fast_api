@@ -1,38 +1,32 @@
-from fastapi import FastAPI, Form, Body, HTTPException
-from fastapi.responses import StreamingResponse
-from fastapi import UploadFile, File
-from fastapi.responses import JSONResponse
-import pandas as pd
-from io import BytesIO
-from dotenv import load_dotenv
-import numpy as np
-import re
 import datetime
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, Binarizer
-from imblearn.over_sampling import SMOTE, RandomOverSampler
-from imblearn.under_sampling import RandomUnderSampler
+import json
+import os
+import re
+from io import BytesIO, StringIO
+from typing import Any, Dict, List, Tuple
+
 import nltk
+import numpy as np
+import pandas as pd
+import tldextract
+from dotenv import load_dotenv
+from fastapi import Body, FastAPI, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
+from geopy.distance import geodesic
+from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.under_sampling import RandomUnderSampler
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-import tldextract
-from geopy.distance import geodesic
-import json
-from together import Together
-from typing import Tuple
-import os
-from typing import Any, Dict, Tuple, List
-from fastapi import FastAPI, Body, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
-import pandas as pd
-import numpy as np
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, Binarizer
-from io import StringIO, BytesIO
+from sklearn.preprocessing import Binarizer, MinMaxScaler, StandardScaler
+from together import Together
 
 load_dotenv()
 
-app = FastAPI(title="CSV Merge API", root_path="/fastapi")
+app = FastAPI(
+    title="CSV Merge API",
+    root_path=os.getenv("FASTAPI_ROOT_PATH", "/fastapi"),
+)
 
 @app.post("/merge")
 async def merge_csv(

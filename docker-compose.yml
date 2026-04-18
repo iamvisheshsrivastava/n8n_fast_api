@@ -2,7 +2,7 @@ services:
   fastapi:
     build:
       context: .
-      dockerfile: fastapi.Dockerfile
+      dockerfile: docker/backend.Dockerfile
     ports:
       - "8000:8000"
     volumes:
@@ -13,7 +13,7 @@ services:
   streamlit:
     build:
       context: .
-      dockerfile: streamlit.Dockerfile
+      dockerfile: docker/frontend.Dockerfile
     ports:
       - "8501:8501"
 
@@ -35,8 +35,8 @@ services:
   homepage:
     image: nginx:alpine
     volumes:
-      - ./nginx:/usr/share/nginx/html
-      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./infra/nginx:/usr/share/nginx/html
+      - ./infra/nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:
       - "8090:80"
     environment:
