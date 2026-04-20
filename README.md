@@ -1,4 +1,4 @@
-# Production-Ready CSV Processing & ML Inference Service (FastAPI · Docker · n8n)   
+# Production-Ready CSV Processing & ML Inference Service   
 
 ## Executive Summary
 End-to-end, containerized data processing and ML inference service built with FastAPI and Docker.
