@@ -44,16 +44,22 @@
 </head>
 <body>
   <!-- Top Navigation -->
-    <div class="navbar">
-      <a href="http://20.224.49.188:8501/" target="_blank">Streamlit</a>
-      <a href="http://20.224.49.188:8000/docs" target="_blank">FastAPI</a>
-      <a href="http://20.224.49.188:5678/" target="_blank">n8n</a>
-    </div>
+  <div class="navbar">
+    <a id="streamlit-link" href="#" target="_blank">Streamlit</a>
+    <a id="fastapi-link" href="#" target="_blank">FastAPI</a>
+    <a id="n8n-link" href="#" target="_blank">n8n</a>
+  </div>
 
   <!-- Main Content -->
   <div class="content">
     <h1>Welcome to CSV Cleaning + Inference Application 🚀</h1>
     <p>Select an app from the navigation bar above.</p>
   </div>
+  <script>
+    const host = window.location.hostname || "localhost";
+    document.getElementById("streamlit-link").href = `http://${host}:8501/`;
+    document.getElementById("fastapi-link").href = `http://${host}:8000/docs`;
+    document.getElementById("n8n-link").href = `http://${host}:5678/`;
+  </script>
 </body>
 </html>
