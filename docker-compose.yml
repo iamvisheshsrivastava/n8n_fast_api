@@ -16,6 +16,10 @@ services:
       dockerfile: docker/frontend.Dockerfile
     ports:
       - "8501:8501"
+    environment:
+      - FASTAPI_BASE_URL=http://fastapi:8000
+    depends_on:
+      - fastapi
 
   n8n:
     image: n8nio/n8n

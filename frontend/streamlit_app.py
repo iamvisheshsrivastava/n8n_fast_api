@@ -7,20 +7,40 @@ import os
 from PIL import Image
 from bs4 import BeautifulSoup
 from wordcloud import WordCloud
-import plotly.express as px      
-import seaborn as sns             
-import matplotlib.pyplot as plt   
-from PIL import Image             
-from io import BytesIO          
+import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
+from io import BytesIO
 from together import Together
 
 ################################## Functions ##########################################
+
+REQUEST_TIMEOUT = 20
+
+
+def api_get(path: str):
+    return requests.get(f"{BASE_URL}{path}", timeout=REQUEST_TIMEOUT)
+
+
+def normalize_visual_type(inferred_type: str) -> str:
+    normalized = inferred_type.strip().lower()
+    if normalized in {"integer", "float", "number", "numeric", "numerical"}:
+        return "Numerical"
+    if normalized in {"datetime", "date", "timestamp"}:
+        return "Datetime"
+    if normalized in {"boolean", "bool"}:
+        return "Boolean"
+    if normalized in {"categorical", "category"}:
+        return "categorical"
+    if normalized in {"string", "text"}:
+        return "Text"
+    return inferred_type
 
 def render_image_urls(urls):
     st.markdown("### 🖼️ Image Previews")
     for url in urls:
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=REQUEST_TIMEOUT)
             img = Image.open(BytesIO(response.content))
             st.image(img, caption=url, use_column_width=True)
         except Exception:
@@ -58,7 +78,7 @@ def render_video_urls(urls):
 
 def fetch_and_summarize_url(url: str, instruction: str, llm_func) -> str:
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=REQUEST_TIMEOUT)
         soup = BeautifulSoup(response.text, "html.parser")
         text = soup.get_text(separator=' ', strip=True)[:1500]
 
@@ -201,16 +221,52 @@ load_dotenv()
 st.set_page_config(page_title="CSV Workflow Dashboard", layout="wide")
 st.title("📊 CSV Workflow Dashboard")
 
-page = st.sidebar.radio("Choose a view", ["Column Inference", "LLM Cleaning", "Visualization", "Manual Cleaning"])
+page = st.sidebar.radio("Choose a view", ["Dataset Summary", "Column Inference", "LLM Cleaning", "Visualization", "Manual Cleaning"])
 
 BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
 
+# ---------------- Dataset Summary ----------------
+if page == "Dataset Summary":
+    st.subheader("Dataset Quality Summary")
+
+    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+    if uploaded_file is not None and st.button("Analyze Dataset"):
+        csv_text = uploaded_file.getvalue().decode("utf-8")
+        response = requests.post(
+            f"{BASE_URL}/dataset_summary",
+            data={"csv_text": csv_text},
+            timeout=REQUEST_TIMEOUT,
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            left, middle, right = st.columns(3)
+            left.metric("Rows", result["rows"])
+            middle.metric("Columns", result["columns"])
+            right.metric("Missing Cells", result["missing_cells"])
+
+            st.markdown("### Columns")
+            st.write(", ".join(result["column_names"]))
+
+            st.markdown("### Missing Values")
+            missing_df = pd.DataFrame(
+                result["missing_by_column"].items(),
+                columns=["Column", "Missing Values"],
+            )
+            st.dataframe(missing_df, use_container_width=True)
+
+            st.markdown("### Preview")
+            st.dataframe(pd.DataFrame(result["preview"]), use_container_width=True)
+        else:
+            st.error(f"API Error: {response.text}")
+
+
 # ---------------- Column Inference ----------------
-if page == "Column Inference":
+elif page == "Column Inference":
     st.subheader("🔍 Inferred Column Types")
 
     if st.button("Load Last Inference"):
-        response = requests.get(f"{BASE_URL}/last_inference")
+        response = api_get("/last_inference")
         if response.status_code == 200:
             result = response.json()
             df = pd.DataFrame(result["columns"].items(), columns=["Column", "Inferred Type"])
@@ -225,7 +281,7 @@ elif page == "LLM Cleaning":
     st.subheader("🧹 LLM-Powered Data Cleaning")
 
     if st.button("Load Last Cleaning"):
-        response = requests.get(f"{BASE_URL}/last_cleaning")
+        response = api_get("/last_cleaning")
         if response.status_code == 200:
             result = response.json()
             cleaned_csv = result["cleaned_csv"]
@@ -248,8 +304,8 @@ elif page == "LLM Cleaning":
 elif page == "Visualization":
     st.subheader("📊 Column Visualizations")
 
-    clean_resp = requests.get(f"{BASE_URL}/last_cleaning")
-    infer_resp = requests.get(f"{BASE_URL}/last_inference")
+    clean_resp = api_get("/last_cleaning")
+    infer_resp = api_get("/last_inference")
 
     if clean_resp.status_code == 200 and infer_resp.status_code == 200:
         clean_data = clean_resp.json()
@@ -259,13 +315,15 @@ elif page == "Visualization":
         df = pd.read_csv(StringIO(cleaned_csv))
 
         col_types = infer_data["columns"]
+        available_cols = [col for col in col_types.keys() if col in df.columns]
+        if not available_cols:
+            st.warning("No inferred columns are present in the cleaned dataset.")
+            st.stop()
 
-        selected_col = st.selectbox("Select a column", list(col_types.keys()))
-        inferred_type = col_types[selected_col]
+        selected_col = st.selectbox("Select a column", available_cols)
+        inferred_type = normalize_visual_type(col_types[selected_col])
 
-        inferred_type_norm = inferred_type.strip().lower()
-
-        render_column_visualization(df, selected_col, inferred_type_norm)
+        render_column_visualization(df, selected_col, inferred_type)
 
     else:
         st.error("❌ No cached inference/cleaning available. Run those steps first.")
@@ -275,15 +333,18 @@ elif page == "Manual Cleaning":
     st.subheader("🧹 Manual Data Cleaning")
 
     if st.button("Load Last Manual Cleaning"):
-        response = requests.get(f"{BASE_URL}/last_manual_cleaning")
+        response = api_get("/last_manual_cleaning")
         if response.status_code == 200:
             result = response.json()
             cleaned_csv = result["cleaned_csv"]
             cleaned_df = pd.read_csv(StringIO(cleaned_csv))
 
             st.success("✅ Last Manual Cleaning Result Loaded")
-            st.write(f"**Instruction:** {result['instruction']}")
-            st.code(result["executed_code"], language="python")
+            before = f"{result['row_count_before']} rows x {result['column_count_before']} columns"
+            after = f"{result['row_count_after']} rows x {result['column_count_after']} columns"
+            st.write(f"**Before:** {before}")
+            st.write(f"**After:** {after}")
+            st.json(result["applied_steps"])
             st.dataframe(cleaned_df)
 
             st.download_button(

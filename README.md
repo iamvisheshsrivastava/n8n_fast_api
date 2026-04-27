@@ -11,6 +11,7 @@ The project is Docker-based, so the backend, Streamlit app, n8n, and a simple NG
 ## What It Does
 
 - Merge two CSV files by one or more columns
+- Profile an uploaded CSV with row counts, missing values, duplicates, and a preview
 - Infer basic column types from CSV text
 - Run LLM-based cleaning instructions through Together.ai
 - Run manual cleaning steps like imputation, scaling, normalization, outlier removal, and one-hot encoding
@@ -51,8 +52,11 @@ FastAPI lives in `backend/app/main.py`.
 
 | Route | Method | Purpose |
 | --- | --- | --- |
+| `/` | `GET` | Return a small API index |
+| `/health` | `GET` | Health check for Docker or uptime checks |
 | `/merge` | `POST` | Merge two CSV files using file paths available to the backend container |
 | `/mergefileupload` | `POST` | Upload two CSV files and merge them |
+| `/dataset_summary` | `POST` | Return a compact profile for CSV text |
 | `/inference` | `POST` | Infer simple column types from CSV text |
 | `/last_inference` | `GET` | Return the last inference result |
 | `/LLMCleaning` | `POST` | Clean CSV text using a natural language instruction |
@@ -71,9 +75,9 @@ cp .env.prod .env
 Update the values as needed:
 
 ```ini
-PUBLIC_BASE_URL=http://localhost
+PUBLIC_BASE_URL=http://localhost:5678
 TOGETHER_API_KEY=your_together_api_key
-FASTAPI_ROOT_PATH=/fastapi
+FASTAPI_ROOT_PATH=
 ```
 
 Then start the stack:
@@ -84,6 +88,7 @@ docker compose up -d --build
 
 Default local URLs:
 
+- FastAPI health: `http://localhost:8000/health`
 - FastAPI docs: `http://localhost:8000/docs`
 - Streamlit: `http://localhost:8501`
 - n8n: `http://localhost:5678`
@@ -133,6 +138,13 @@ curl -X POST http://localhost:8000/inference \
   --data-urlencode "csv_text=$(cat merged.csv)"
 ```
 
+Profile a CSV:
+
+```bash
+curl -X POST http://localhost:8000/dataset_summary \
+  --data-urlencode "csv_text=$(cat merged.csv)"
+```
+
 Run LLM cleaning:
 
 ```bash
@@ -158,6 +170,7 @@ After importing, check the API URLs inside the workflow nodes and update them fo
 - The NGINX config in this repo is currently a simple static homepage, not a full reverse proxy for all services.
 - Docker Compose mounts `./data` into the backend container at `/data`.
 - The app stores latest results in memory. Restarting the backend clears them.
+- In Docker Compose, Streamlit reaches the backend through the internal URL `http://fastapi:8000`.
 
 ## License
 

@@ -25,8 +25,61 @@ load_dotenv()
 
 app = FastAPI(
     title="CSV Merge API",
-    root_path=os.getenv("FASTAPI_ROOT_PATH", "/fastapi"),
+    root_path=os.getenv("FASTAPI_ROOT_PATH", ""),
 )
+
+
+ALLOWED_JOIN_TYPES = {"inner", "left", "right", "outer"}
+
+
+def parse_join_columns(on: str) -> List[str]:
+    join_cols = [c.strip() for c in on.split(",") if c.strip()]
+    if not join_cols:
+        raise HTTPException(400, "Provide at least one join column via 'on'")
+    return join_cols
+
+
+def parse_csv_text(csv_text: str) -> pd.DataFrame:
+    if not isinstance(csv_text, str) or csv_text.strip() == "":
+        raise HTTPException(400, "CSV text cannot be empty")
+    try:
+        return pd.read_csv(StringIO(csv_text))
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse CSV: {e}")
+
+
+def dataframe_profile(df: pd.DataFrame) -> Dict[str, Any]:
+    missing_by_column = df.isna().sum().astype(int).to_dict()
+    numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_columns = df.select_dtypes(exclude=[np.number]).columns.tolist()
+    preview = df.head(10).astype(object).where(pd.notna(df.head(10)), None)
+
+    return {
+        "rows": int(len(df)),
+        "columns": int(df.shape[1]),
+        "column_names": df.columns.tolist(),
+        "numeric_columns": numeric_columns,
+        "categorical_columns": categorical_columns,
+        "missing_cells": int(df.isna().sum().sum()),
+        "missing_by_column": missing_by_column,
+        "duplicate_rows": int(df.duplicated().sum()),
+        "preview": preview.to_dict(orient="records"),
+    }
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": "CSV Merge API",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 
 @app.post("/merge")
 async def merge_csv(
@@ -36,12 +89,10 @@ async def merge_csv(
     how: str = Form("inner")       
 ):
     how = how.lower().strip()
-    if how not in {"inner", "left", "right", "outer"}:
+    if how not in ALLOWED_JOIN_TYPES:
         raise HTTPException(400, f"Invalid join type: {how}")
 
-    join_cols = [c.strip() for c in on.split(",") if c.strip()]
-    if not join_cols:
-        raise HTTPException(400, "Provide at least one join column via 'on'")
+    join_cols = parse_join_columns(on)
 
     try:
         df1 = pd.read_csv(file1_path)
@@ -72,12 +123,10 @@ async def mergefileupload(
     how: str = Form("inner")       
 ):
     how = how.lower().strip()
-    if how not in {"inner", "left", "right", "outer"}:
+    if how not in ALLOWED_JOIN_TYPES:
         raise HTTPException(400, f"Invalid join type: {how}")
 
-    join_cols = [c.strip() for c in on.split(",") if c.strip()]
-    if not join_cols:
-        raise HTTPException(400, "Provide at least one join column via 'on'")
+    join_cols = parse_join_columns(on)
 
     try:
         df1 = pd.read_csv(file1.file)
@@ -112,7 +161,7 @@ async def infer_columns(csv_text: str = Form(...)):
     """
     global last_inference_result
     try:
-        df = pd.read_csv(BytesIO(csv_text.encode("utf-8")))
+        df = parse_csv_text(csv_text)
 
         col_types = {}
         for col in df.columns:
@@ -145,6 +194,15 @@ async def infer_columns(csv_text: str = Form(...)):
         raise HTTPException(400, f"Could not infer columns: {e}")
 
 
+@app.post("/dataset_summary")
+async def dataset_summary(csv_text: str = Form(...)):
+    """
+    Return a compact quality/profile summary for uploaded CSV text.
+    """
+    df = parse_csv_text(csv_text)
+    return JSONResponse(dataframe_profile(df))
+
+
 @app.get("/last_inference")
 async def get_last_inference():
     """
@@ -165,7 +223,7 @@ async def llm_clean_csv(
     """
     global last_cleaning_result
     try:
-        df = pd.read_csv(BytesIO(csv_text.encode("utf-8")))
+        df = parse_csv_text(csv_text)
 
         cleaned_df, code_str = custom_cleaning_via_llm(instruction, df)
 
@@ -594,17 +652,11 @@ async def manual_cleaning(payload: Dict[str, Any] = Body(...)):
         csv_text = payload.get("data")
         raw_params = payload.get("params")
 
-        if not isinstance(csv_text, str) or csv_text.strip() == "":
-            raise HTTPException(400, "Missing 'data' (CSV text).")
         if not isinstance(raw_params, dict):
             raise HTTPException(400, "Missing or invalid 'params' (object).")
 
         params = coerce_params(raw_params)
-
-        try:
-            df = pd.read_csv(StringIO(csv_text))
-        except Exception as e:
-            raise HTTPException(400, f"Could not parse CSV: {e}")
+        df = parse_csv_text(csv_text)
 
         cleaned_df, logs = manual_cleaning_fn_from_form(df, params)
 
@@ -616,6 +668,8 @@ async def manual_cleaning(payload: Dict[str, Any] = Body(...)):
             "row_count_after": int(len(cleaned_df)),
             "column_count_before": int(df.shape[1]),
             "column_count_after": int(cleaned_df.shape[1]),
+            "summary": dataframe_profile(cleaned_df),
+            "cleaned_csv": cleaned_csv,
             "cleaned_csv_preview": cleaned_csv[:1000],
         }
 
